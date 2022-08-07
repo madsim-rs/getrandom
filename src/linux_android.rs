@@ -38,6 +38,7 @@ fn is_getrandom_available() -> bool {
     }
 }
 
+#[cfg(not(madsim))]
 unsafe fn getrandom(
     buf: *mut libc::c_void,
     buflen: libc::size_t,
@@ -45,3 +46,6 @@ unsafe fn getrandom(
 ) -> libc::ssize_t {
     libc::syscall(libc::SYS_getrandom, buf, buflen, flags) as libc::ssize_t
 }
+
+#[cfg(madsim)]
+use libc::getrandom;
