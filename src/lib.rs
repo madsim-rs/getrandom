@@ -18,13 +18,13 @@
 //! | iOS, tvOS, watchOS | `*‑apple‑ios`, `*-apple-tvos`, `*-apple-watchos` | [`SecRandomCopyBytes`]
 //! | FreeBSD           | `*‑freebsd`        | [`getrandom`][5] if available, otherwise [`kern.arandom`][6]
 //! | OpenBSD           | `*‑openbsd`        | [`getentropy`][7]
-//! | NetBSD            | `*‑netbsd`         | [`kern.arandom`][8]
+//! | NetBSD            | `*‑netbsd`         | [`getrandom`][16] if available, otherwise [`kern.arandom`][8]
 //! | Dragonfly BSD     | `*‑dragonfly`      | [`getrandom`][9] if available, otherwise [`/dev/urandom`][10] (identical to `/dev/random`)
 //! | Solaris, illumos  | `*‑solaris`, `*‑illumos` | [`getrandom`][11] if available, otherwise [`/dev/random`][12]
 //! | Fuchsia OS        | `*‑fuchsia`        | [`cprng_draw`]
 //! | Redox             | `*‑redox`          | `/dev/urandom`
 //! | Haiku             | `*‑haiku`          | `/dev/urandom` (identical to `/dev/random`)
-//! | Hermit            | `x86_64-*-hermit`  | [`RDRAND`]
+//! | Hermit            | `*-hermit`         | [`sys_read_entropy`]
 //! | SGX               | `x86_64‑*‑sgx`     | [`RDRAND`]
 //! | VxWorks           | `*‑wrs‑vxworks‑*`  | `randABytes` after checking entropy pool initialization with `randSecure`
 //! | ESP-IDF           | `*‑espidf`         | [`esp_fill_random`]
@@ -33,6 +33,8 @@
 //! | Web Browser and Node.js | `wasm*‑*‑unknown` | [`Crypto.getRandomValues`] if available, then [`crypto.randomFillSync`] if on Node.js, see [WebAssembly support]
 //! | SOLID             | `*-kmc-solid_*`    | `SOLID_RNG_SampleRandomBytes`
 //! | Nintendo 3DS      | `armv6k-nintendo-3ds` | [`getrandom`][1]
+//! | QNX Neutrino      | `*‑nto-qnx*`          | [`/dev/urandom`][14] (identical to `/dev/random`)
+//! | AIX               | `*-ibm-aix`        | [`/dev/urandom`][15]
 //!
 //! There is no blanket implementation on `unix` targets that reads from
 //! `/dev/urandom`. This ensures all supported targets are using the recommended
@@ -160,6 +162,9 @@
 //! [11]: https://docs.oracle.com/cd/E88353_01/html/E37841/getrandom-2.html
 //! [12]: https://docs.oracle.com/cd/E86824_01/html/E54777/random-7d.html
 //! [13]: https://github.com/emscripten-core/emscripten/pull/12240
+//! [14]: https://www.qnx.com/developers/docs/7.1/index.html#com.qnx.doc.neutrino.utilities/topic/r/random.html
+//! [15]: https://www.ibm.com/docs/en/aix/7.3?topic=files-random-urandom-devices
+//! [16]: https://man.netbsd.org/getrandom.2
 //!
 //! [`BCryptGenRandom`]: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 //! [`Crypto.getRandomValues`]: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
@@ -174,11 +179,12 @@
 //! [`module`]: https://rustwasm.github.io/wasm-bindgen/reference/attributes/on-js-imports/module.html
 //! [CommonJS modules]: https://nodejs.org/api/modules.html
 //! [ES modules]: https://nodejs.org/api/esm.html
+//! [`sys_read_entropy`]: https://hermitcore.github.io/libhermit-rs/hermit/fn.sys_read_entropy.html
 
 #![doc(
     html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
     html_favicon_url = "https://www.rust-lang.org/favicon.ico",
-    html_root_url = "https://docs.rs/getrandom/0.2.8"
+    html_root_url = "https://docs.rs/getrandom/0.2.9"
 )]
 #![no_std]
 #![warn(rust_2018_idioms, unused_lifetimes, missing_docs)]
@@ -209,7 +215,7 @@ pub use crate::error::Error;
 // The function MUST NOT ever write uninitialized bytes into `dest`,
 // regardless of what value it returns.
 cfg_if! {
-    if #[cfg(any(target_os = "haiku", target_os = "redox"))] {
+    if #[cfg(any(target_os = "haiku", target_os = "redox", target_os = "nto", target_os = "aix"))] {
         mod util_libc;
         #[path = "use_file.rs"] mod imp;
     } else if #[cfg(any(target_os = "android", target_os = "linux"))] {
@@ -240,8 +246,8 @@ cfg_if! {
         #[path = "openbsd.rs"] mod imp;
     } else if #[cfg(all(target_arch = "wasm32", target_os = "wasi"))] {
         #[path = "wasi.rs"] mod imp;
-    } else if #[cfg(all(target_arch = "x86_64", target_os = "hermit"))] {
-        #[path = "rdrand.rs"] mod imp;
+    } else if #[cfg(target_os = "hermit")] {
+        #[path = "hermit.rs"] mod imp;
     } else if #[cfg(target_os = "vxworks")] {
         mod util_libc;
         #[path = "vxworks.rs"] mod imp;
