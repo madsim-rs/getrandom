@@ -78,7 +78,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: Install multilib
-        run: sudo apt-get install gcc-multilib
+        run: sudo apt-get update && sudo apt-get install gcc-multilib
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --target=${{ matrix.target }} --features=std
 
@@ -140,7 +140,7 @@ jobs:
           # TODO: add Android tests back when the cross cuts a new release.
           # See: https://github.com/cross-rs/cross/issues/1222
           # aarch64-linux-android,
-          mips-unknown-linux-gnu,
+          powerpc-unknown-linux-gnu,
           wasm32-unknown-emscripten,
         ]
     steps:
@@ -297,6 +297,7 @@ jobs:
           x86_64-wrs-vxworks,
           aarch64-kmc-solid_asp3,
           armv6k-nintendo-3ds,
+          armv7-sony-vita-newlibeabihf,
           riscv32imc-esp-espidf,
           aarch64-unknown-nto-qnx710,
           # `std` support still in progress. Can be moved up with the other
@@ -316,6 +317,8 @@ jobs:
             features: ["rdrand"]
           - target: x86_64-unknown-l4re-uclibc
             features: ["rdrand"]
+          - target: i686-unknown-hurd-gnu
+            features: ["std"]
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly # Required to build libcore
